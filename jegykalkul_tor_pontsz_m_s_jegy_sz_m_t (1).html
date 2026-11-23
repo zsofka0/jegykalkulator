@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jegykalkulátor – Pontszám és Jegy Számító</title>
+    <!-- Tailwind CSS betöltése -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        button, input {
+            touch-action: manipulation;
+        }
+        /* Beviteli mezők fókusz és sima átmenetek */
+        input[type="text"]:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100/80 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200 min-h-screen pb-16 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Kompakt felső fejléc -->
+    <header class="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 py-3">
+        <div class="max-w-2xl mx-auto flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="4" y="2" width="16" height="20" rx="2" />
+                        <line x1="8" y1="6" x2="16" y2="6" />
+                        <line x1="16" y1="14" x2="16" y2="18" />
+                        <path d="M16 10h.01" />
+                        <path d="M12 10h.01" />
+                        <path d="M8 10h.01" />
+                        <path d="M12 14h.01" />
+                        <path d="M8 14h.01" />
+                        <path d="M12 18h.01" />
+                        <path d="M8 18h.01" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg leading-tight tracking-tight">Jegykalkulátor</h1>
+                    <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">110 pontos rendszer • Tizedes pontok</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Privát felhasználói állapot és mentés visszajelző -->
+                <div id="saveStatusBadge" title="Minden adat kizárólag a saját privát fiókodban tárolódik" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold transition-all duration-300">
+                    <span id="saveStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 transition-transform duration-300"></span>
+                    <span id="saveStatusText" class="hidden sm:inline">Privát felhő mentve</span>
+                    <span class="sm:hidden">Privát</span>
+                </div>
+
+                <!-- Sötét / Világos mód váltó -->
+                <button onclick="toggleTheme()" aria-label="Téma váltása" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Fő tartalom konténer -->
+    <main class="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+
+        <!-- Gyors áttekintő sáv (tárgyak száma és várható átlag) -->
+        <section id="summaryStrip" class="bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 font-bold" id="summarySubjectCount">0</span>
+                <span class="font-semibold text-slate-600 dark:text-slate-300">rögzített tantárgy</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-right">
+                    <span class="text-slate-400 dark:text-slate-500">Jelenlegi átlag: </span>
+                    <span id="summaryAvgGrade" class="font-extrabold text-slate-800 dark:text-slate-100">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Új tantárgy hozzáadása gyors sáv -->
+        <section class="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+            <form onsubmit="handleAddSubject(event)" class="flex gap-2">
+                <input
+                    type="text"
+                    id="newSubjectInput"
+                    placeholder="Új tantárgy neve (pl. Analízis I.)"
+                    oninput="handleDraftSubjectInput(this.value)"
+                    required
+                    class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-sm font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                >
+                <button
+                    type="submit"
+                    class="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold text-sm shadow-sm shadow-indigo-500/25 transition flex items-center gap-1.5"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Hozzáad</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- Egymás alatti tantárgykártyák konténere -->
+        <section id="subjectsListContainer" class="space-y-4">
+            <!-- JavaScript tölti fel a tantárgykártyákat -->
+        </section>
+
+        <!-- Biztonsági mentés és visszaállítás (JSON Export / Import) -->
+        <section class="pt-2">
+            <div class="bg-white/70 dark:bg-slate-900/70 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="space-y-1 text-slate-500 dark:text-slate-400">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <span>Csak te látod a saját adataidat – privát felhasználói fiókhoz kötve.</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 dark:text-slate-500 font-mono break-all">
+                        Privát azonosítód: <span id="privateUserIdDisplay">Betöltés...</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 ml-auto">
+                    <button
+                        type="button"
+                        onclick="exportBackupJson()"
+                        class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition active:scale-95 flex items-center gap-1.5"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Mentés (JSON)</span>
+                    </button>
+                    <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition active:scale-95 flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span>Visszatöltés</span>
+                        <input type="file" id="importJsonInput" accept=".json,application/json" onchange="importBackupJson(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODÁLIS ABLAK: Tantárgy átnevezése -->
+    <div id="renameModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xl space-y-4">
+            <h3 class="text-lg font-bold">Tantárgy átnevezése</h3>
+            <form onsubmit="handleRenameSubmit(event)" class="space-y-4">
+                <div>
+                    <label for="renameSubjectInput" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1.5">Tantárgy új neve</label>
+                    <input type="text" id="renameSubjectInput" required class="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex justify-end gap-2.5 pt-1">
+                    <button type="button" onclick="closeRenameModal()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Mégse</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">Mentés</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODÁLIS ABLAK: Törlés megerősítése -->
+    <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xl space-y-4">
+            <h3 class="text-lg font-bold">Tantárgy törlése</h3>
+            <p id="confirmModalText" class="text-sm text-slate-600 dark:text-slate-300">Biztosan törölni szeretnéd ezt a tantárgyat?</p>
+            <div class="flex justify-end gap-2.5 pt-1">
+                <button type="button" onclick="closeConfirmModal()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Mégse</button>
+                <button type="button" id="confirmDeleteBtn" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition">Törlés</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Értesítő Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold shadow-lg opacity-0 pointer-events-none transition-opacity duration-300">
+        Mentve
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            deleteDoc,
+            onSnapshot,
+            collection,
+            writeBatch
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- KONSTANSOK ÉS PONTHATÁROK ---
+        const MAX_POINTS = 110;
+        const GRADE_THRESHOLDS = [
+            { grade: 2, label: 'Elégséges (2)', shortLabel: 'Kettes (2)', min: 60, color: 'amber' },
+            { grade: 3, label: 'Közepes (3)', shortLabel: 'Hármas (3)', min: 70, color: 'yellow' },
+            { grade: 4, label: 'Jó (4)', shortLabel: 'Négyes (4)', min: 80, color: 'emerald' },
+            { grade: 5, label: 'Jeles (5)', shortLabel: 'Ötös (5)', min: 90, color: 'indigo' }
+        ];
+
+        // --- ALAPÉRTELMEZETT MINTA TANTÁRGYAK (CSAK ÚJ FELHASZNÁLÓ ELSŐ BELÉPÉSEKOR) ---
+        const DEFAULT_SUBJECTS = [
+            {
+                id: 'subj-math-1',
+                name: 'Matematika I.',
+                zh1: '24,5',
+                zh2: '28',
+                zh3: '11,5',
+                hasZh3: true,
+                plusPoints: '4,5',
+                order: 0
+            },
+            {
+                id: 'subj-prog-1',
+                name: 'Programozás alapjai',
+                zh1: '32,5',
+                zh2: '36',
+                zh3: '',
+                hasZh3: false,
+                plusPoints: '8,25',
+                order: 1
+            }
+        ];
+
+        // --- FIREBASE INICIALIZÁLÁS ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let unsubscribeSubjects = null;
+        let unsubscribePrefs = null;
+        let hasBootstrappedUser = false;
+
+        // --- ALKALMAZÁSÁLLAPOT (MEMÓRIÁBAN + PRIVÁT FELHŐBEN) ---
+        let subjects = [];
+        let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        let renamingSubjectId = null;
+        let savePulseTimer = null;
+        const fieldSaveTimers = {};
+
+        // --- INICIALIZÁLÁS ÉS HITELESÍTÉS ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            applyTheme(currentTheme);
+            await initPrivateUserStorage();
+        });
+
+        async function initPrivateUserStorage() {
+            if (!firebaseConfig) {
+                setSaveStatus('Helyi munkamenet', false);
+                subjects = JSON.parse(JSON.stringify(DEFAULT_SUBJECTS));
+                renderAllSubjects();
+                return;
+            }
+
+            try {
+                setSaveStatus('Kapcsolódás...', false);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // 1. KÖTELEZŐ HITELESÍTÉS MINDEN LEKÉRDEZÉS ELŐTT
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+
+                if (!currentUser) return;
+
+                const userId = currentUser.uid;
+                const uidDisplay = document.getElementById('privateUserIdDisplay');
+                if (uidDisplay) {
+                    uidDisplay.textContent = userId;
+                }
+
+                // 2. CSAK A SAJÁT PRIVÁT ÚTVONALAK FIGYELÉSE: /artifacts/{appId}/users/{userId}/...
+                subscribeToPrivateData(userId);
+            } catch (err) {
+                console.error('Privát fiók inicializálási hiba:', err);
+                setSaveStatus('Kapcsolati hiba', false);
+                showToast('Nem sikerült csatlakozni a privát tárhelyhez');
+            }
+        }
+
+        function subscribeToPrivateData(userId) {
+            if (!currentUser || !db) return;
+
+            const prefsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+            const subjectsColRef = collection(db, 'artifacts', appId, 'users', userId, 'subjects');
+
+            // Felhasználó saját beállításainak figyelése
+            unsubscribePrefs = onSnapshot(
+                prefsDocRef,
+                async (snapshot) => {
+                    if (!currentUser) return;
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.theme === 'dark' || data.theme === 'light') {
+                            applyTheme(data.theme);
+                        }
+                    } else if (!hasBootstrappedUser) {
+                        // Legelső belépés: minta tantárgyak létrehozása kizárólag ennek a felhasználónak
+                        hasBootstrappedUser = true;
+                        await bootstrapInitialSubjectsForUser(userId);
+                    }
+                },
+                (error) => {
+                    console.error('Beállítások figyelési hiba:', error);
+                }
+            );
+
+            // Felhasználó saját tantárgyainak valós idejű figyelése (komplex lekérdezés nélkül)
+            unsubscribeSubjects = onSnapshot(
+                subjectsColRef,
+                (querySnapshot) => {
+                    if (!currentUser) return;
+
+                    const loaded = [];
+                    querySnapshot.forEach((docSnap) => {
+                        loaded.push(sanitizeSubject(docSnap.data(), docSnap.id));
+                    });
+
+                    // Rendezés memóriában (order mező alapján)
+                    loaded.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+                    // Csak akkor írjuk felül az éppen szerkesztett mezőt, ha nem abba gépel a felhasználó
+                    const activeEl = document.activeElement;
+                    const activeId = activeEl && activeEl.id ? activeEl.id : '';
+
+                    subjects = loaded;
+                    renderAllSubjectsPreserveFocus(activeId);
+                    setSaveStatus('Privát felhő mentve', false);
+                },
+                (error) => {
+                    console.error('Tantárgyak betöltési hiba:', error);
+                    setSaveStatus('Szinkronizálási hiba', false);
+                }
+            );
+        }
+
+        async function bootstrapInitialSubjectsForUser(userId) {
+            if (!currentUser || !db) return;
+            try {
+                const batch = writeBatch(db);
+                const prefsRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+                batch.set(prefsRef, {
+                    initialized: true,
+                    theme: currentTheme,
+                    updatedAt: new Date().toISOString()
+                });
+
+                DEFAULT_SUBJECTS.forEach((subj, index) => {
+                    const subjRef = doc(db, 'artifacts', appId, 'users', userId, 'subjects', subj.id);
+                    batch.set(subjRef, {
+                        ...subj,
+                        order: index,
+                        updatedAt: new Date().toISOString()
+                    });
+                });
+
+                await batch.commit();
+            } catch (err) {
+                console.error('Kezdeti adatok mentési hiba:', err);
+            }
+        }
+
+        function sanitizeSubject(raw, docId) {
+            return {
+                id: docId || (typeof raw.id === 'string' && raw.id ? raw.id : `subj-${Date.now()}`),
+                name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : 'Névtelen tantárgy',
+                zh1: raw.zh1 !== undefined && raw.zh1 !== null ? String(raw.zh1) : '',
+                zh2: raw.zh2 !== undefined && raw.zh2 !== null ? String(raw.zh2) : '',
+                zh3: raw.zh3 !== undefined && raw.zh3 !== null ? String(raw.zh3) : '',
+                hasZh3: typeof raw.hasZh3 === 'boolean' ? raw.hasZh3 : true,
+                plusPoints: raw.plusPoints !== undefined && raw.plusPoints !== null ? String(raw.plusPoints) : '',
+                order: typeof raw.order === 'number' ? raw.order : 0
+            };
+        }
+
+        // --- PRIVÁT FELHŐ MENTÉSI SEGÉDFÜGGVÉNYEK ---
+        async function saveSingleSubjectToCloud(subj) {
+            if (!currentUser || !db || !subj) return;
+            try {
+                setSaveStatus('Mentés...', true);
+                const userId = currentUser.uid;
+                const subjRef = doc(db, 'artifacts', appId, 'users', userId, 'subjects', subj.id);
+                await setDoc(subjRef, {
+                    id: subj.id,
+                    name: subj.name,
+                    zh1: subj.zh1,
+                    zh2: subj.zh2,
+                    zh3: subj.zh3,
+                    hasZh3: subj.hasZh3,
+                    plusPoints: subj.plusPoints,
+                    order: subj.order ?? 0,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+
+                setSaveStatus('Privát felhő mentve', false);
+                flashSaveStatusIndicator();
+            } catch (err) {
+                console.error('Tantárgy mentési hiba:', err);
+                setSaveStatus('Mentési hiba', false);
+            }
+        }
+
+        async function deleteSingleSubjectFromCloud(subjectId) {
+            if (!currentUser || !db) return;
+            try {
+                setSaveStatus('Törlés...', true);
+                const userId = currentUser.uid;
+                const subjRef = doc(db, 'artifacts', appId, 'users', userId, 'subjects', subjectId);
+                await deleteDoc(subjRef);
+                setSaveStatus('Privát felhő mentve', false);
+                flashSaveStatusIndicator();
+            } catch (err) {
+                console.error('Tantárgy törlési hiba:', err);
+                setSaveStatus('Törlési hiba', false);
+            }
+        }
+
+        async function saveThemePreferenceToCloud(theme) {
+            if (!currentUser || !db) return;
+            try {
+                const userId = currentUser.uid;
+                const prefsRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+                await setDoc(prefsRef, {
+                    initialized: true,
+                    theme: theme,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (err) {
+                console.error('Téma mentési hiba:', err);
+            }
+        }
+
+        function setSaveStatus(text, isSaving) {
+            const textEl = document.getElementById('saveStatusText');
+            const dotEl = document.getElementById('saveStatusDot');
+            if (textEl) textEl.textContent = text;
+            if (dotEl) {
+                if (isSaving) {
+                    dotEl.classList.remove('bg-emerald-500');
+                    dotEl.classList.add('bg-amber-500', 'animate-pulse');
+                } else {
+                    dotEl.classList.remove('bg-amber-500', 'animate-pulse');
+                    dotEl.classList.add('bg-emerald-500');
+                }
+            }
+        }
+
+        function flashSaveStatusIndicator() {
+            const badge = document.getElementById('saveStatusBadge');
+            const dot = document.getElementById('saveStatusDot');
+            if (!badge || !dot) return;
+
+            badge.classList.add('ring-2', 'ring-emerald-400/60');
+            dot.classList.add('scale-125');
+
+            clearTimeout(savePulseTimer);
+            savePulseTimer = setTimeout(() => {
+                badge.classList.remove('ring-2', 'ring-emerald-400/60');
+                dot.classList.remove('scale-125');
+            }, 450);
+        }
+
+        // --- TÉMA KEZELÉS ---
+        function applyTheme(theme) {
+            const resolved = theme === 'dark' ? 'dark' : 'light';
+            currentTheme = resolved;
+            if (resolved === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        function toggleTheme() {
+            const nextTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+            applyTheme(nextTheme);
+            saveThemePreferenceToCloud(nextTheme);
+        }
+
+        function handleDraftSubjectInput(val) {
+            // Az új tantárgy mező helyi vázlatként marad gépelés közben
+        }
+
+        // --- PONTOS TIZEDES SZÁMÍTÁS ÉS FORMÁZÁS ---
+        function roundToTwo(num) {
+            return Math.round((Number(num) + Number.EPSILON) * 100) / 100;
+        }
+
+        function parseDecimal(rawVal) {
+            if (rawVal === null || rawVal === undefined) return 0;
+            const cleaned = String(rawVal).trim().replace(/\s+/g, '').replace(',', '.');
+            if (cleaned === '' || cleaned === '-' || cleaned === '.') return 0;
+            const num = parseFloat(cleaned);
+            if (isNaN(num) || num < 0) return 0;
+            return roundToTwo(num);
+        }
+
+        function formatPoints(num) {
+            const rounded = roundToTwo(num);
+            if (Number.isInteger(rounded)) {
+                return rounded.toString();
+            }
+            return rounded.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+        }
+
+        function computeSubjectStats(subj) {
+            const p1 = parseDecimal(subj.zh1);
+            const p2 = parseDecimal(subj.zh2);
+            const p3 = subj.hasZh3 ? parseDecimal(subj.zh3) : 0;
+            const pPlus = parseDecimal(subj.plusPoints);
+
+            const total = roundToTwo(p1 + p2 + p3 + pPlus);
+
+            let currentGrade = { grade: 1, label: 'Elégtelen (1)', color: 'rose' };
+            for (const t of GRADE_THRESHOLDS) {
+                if (total >= t.min) {
+                    currentGrade = t;
+                }
+            }
+
+            return {
+                total,
+                currentGrade,
+                isOverMax: total > MAX_POINTS
+            };
+        }
+
+        // --- TELJES LISTA RENDERELÉSE ---
+        function renderAllSubjects() {
+            updateSummaryStrip();
+
+            const container = document.getElementById('subjectsListContainer');
+            container.innerHTML = '';
+
+            if (subjects.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center space-y-2">
+                        <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Még nincs hozzáadott tantárgyad.</p>
+                        <p class="text-xs text-slate-400 dark:text-slate-500">Írd be fent az első tantárgy nevét – csak a te privát fiókodban lesz látható!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            subjects.forEach(subj => {
+                const card = createSubjectCardElement(subj);
+                container.appendChild(card);
+            });
+        }
+
+        function renderAllSubjectsPreserveFocus(activeElementId) {
+            let selectionStart = null;
+            let selectionEnd = null;
+            if (activeElementId) {
+                const prevEl = document.getElementById(activeElementId);
+                if (prevEl && typeof prevEl.selectionStart === 'number') {
+                    selectionStart = prevEl.selectionStart;
+                    selectionEnd = prevEl.selectionEnd;
+                }
+            }
+
+            renderAllSubjects();
+
+            if (activeElementId) {
+                const nextEl = document.getElementById(activeElementId);
+                if (nextEl) {
+                    nextEl.focus();
+                    if (selectionStart !== null && typeof nextEl.setSelectionRange === 'function') {
+                        nextEl.setSelectionRange(selectionStart, selectionEnd);
+                    }
+                }
+            }
+        }
+
+        // --- GYORS ÁTTEKINTŐ SÁV FRISSÍTÉSE ---
+        function updateSummaryStrip() {
+            const countEl = document.getElementById('summarySubjectCount');
+            const avgEl = document.getElementById('summaryAvgGrade');
+
+            countEl.textContent = subjects.length;
+
+            if (subjects.length === 0) {
+                avgEl.textContent = '-';
+                return;
+            }
+
+            const sumGrades = subjects.reduce((acc, s) => acc + computeSubjectStats(s).currentGrade.grade, 0);
+            const avg = roundToTwo(sumGrades / subjects.length);
+            avgEl.textContent = formatPoints(avg);
+        }
+
+        // --- EGYETLEN TANTÁRGYKÁRTYA DOM LÉTREHOZÁSA ---
+        function createSubjectCardElement(subj) {
+            const stats = computeSubjectStats(subj);
+            const article = document.createElement('article');
+            article.id = `card-${subj.id}`;
+            article.className = 'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-4 sm:p-5 space-y-4 transition-all';
+
+            // 3. Zh blokk vagy visszaállító gomb
+            const zh3Html = subj.hasZh3
+                ? `
+                    <div class="relative bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/80 p-2.5 transition focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="input-zh3-${subj.id}" class="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">3. Zh</label>
+                            <button
+                                type="button"
+                                onclick="removeZh3('${subj.id}')"
+                                title="3. Zh eltávolítása"
+                                aria-label="3. Zh eltávolítása"
+                                class="w-5 h-5 -mr-1 -mt-0.5 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="input-zh3-${subj.id}"
+                            value="${escapeAttr(subj.zh3)}"
+                            placeholder="0"
+                            oninput="handleFieldInput('${subj.id}', 'zh3', this.value)"
+                            class="w-full bg-transparent text-base sm:text-lg font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                        >
+                    </div>
+                `
+                : `
+                    <button
+                        type="button"
+                        onclick="restoreZh3('${subj.id}')"
+                        class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 bg-white/60 dark:bg-slate-900/40 p-2.5 flex flex-col items-center justify-center text-center gap-1 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition active:scale-95 min-h-[68px]"
+                    >
+                        <span class="text-xs font-bold">+ 3. Zh</span>
+                        <span class="text-[10px] opacity-80">hozzáadása</span>
+                    </button>
+                `;
+
+            article.innerHTML = `
+                <!-- Kártya fejléc: Tantárgy neve, szerkesztés/törlés, összpontszám és aktuális jegy -->
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white truncate">${escapeHtml(subj.name)}</h2>
+                            <button
+                                type="button"
+                                onclick="openRenameModal('${subj.id}')"
+                                title="Tantárgy átnevezése"
+                                class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                onclick="requestDeleteSubject('${subj.id}')"
+                                title="Tantárgy törlése"
+                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition shrink-0"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Összpontszám kijelzés -->
+                        <div class="flex items-baseline gap-1.5 mt-1">
+                            <span id="total-display-${subj.id}" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">${formatPoints(stats.total)}</span>
+                            <span class="text-xs sm:text-sm font-semibold text-slate-400">/ 110 pont</span>
+                            <span id="overmax-badge-${subj.id}" class="${stats.isOverMax ? 'inline-flex' : 'hidden'} ml-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                Max. 110 p elérve!
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Aktuális érdemjegy jelvény -->
+                    <div id="grade-badge-${subj.id}" class="shrink-0 px-3 py-2 rounded-xl border text-right ${getBadgeColorClasses(stats.currentGrade.color)}">
+                        <div class="text-[10px] font-bold uppercase tracking-wider opacity-80">Jelenlegi jegy</div>
+                        <div class="text-sm sm:text-base font-extrabold leading-tight">${stats.currentGrade.label}</div>
+                    </div>
+                </div>
+
+                <!-- Vizuális haladási sáv 0-tól 110-ig (60, 70, 80, 90 ponthatárokkal) -->
+                <div class="space-y-1.5">
+                    <div class="relative h-5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner">
+                        <div
+                            id="progress-fill-${subj.id}"
+                            class="h-full rounded-full transition-all duration-300 ease-out ${getProgressFillClass(stats.currentGrade.color)}"
+                            style="width: ${Math.min(100, Math.max(0, (stats.total / MAX_POINTS) * 100))}%;"
+                        ></div>
+                        <!-- Ponthatár jelölők: 60 (54.54%), 70 (63.63%), 80 (72.72%), 90 (81.81%) -->
+                        <div class="absolute top-0 bottom-0 w-0.5 bg-slate-400/75 dark:bg-slate-500/75 z-10" style="left: 54.54%;" title="Kettes (2): 60 pont"></div>
+                        <div class="absolute top-0 bottom-0 w-0.5 bg-slate-400/75 dark:bg-slate-500/75 z-10" style="left: 63.63%;" title="Hármas (3): 70 pont"></div>
+                        <div class="absolute top-0 bottom-0 w-0.5 bg-slate-400/75 dark:bg-slate-500/75 z-10" style="left: 72.72%;" title="Négyes (4): 80 pont"></div>
+                        <div class="absolute top-0 bottom-0 w-0.5 bg-slate-400/75 dark:bg-slate-500/75 z-10" style="left: 81.81%;" title="Ötös (5): 90 pont"></div>
+                    </div>
+                    <div class="relative h-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 select-none">
+                        <span class="absolute left-0">0</span>
+                        <span class="absolute -translate-x-1/2 text-amber-600 dark:text-amber-400" style="left: 54.54%;">60</span>
+                        <span class="absolute -translate-x-1/2 text-yellow-600 dark:text-yellow-400" style="left: 63.63%;">70</span>
+                        <span class="absolute -translate-x-1/2 text-emerald-600 dark:text-emerald-400" style="left: 72.72%;">80</span>
+                        <span class="absolute -translate-x-1/2 text-indigo-600 dark:text-indigo-400" style="left: 81.81%;">90</span>
+                        <span class="absolute right-0">110</span>
+                    </div>
+                </div>
+
+                <!-- Beviteli szekciók: ZH pontszámok doboz + Plusz pont doboz -->
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <!-- ZH pontszámok doboz (8 oszlop asztali nézetben) -->
+                    <div class="sm:col-span-8 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-200/70 dark:border-slate-700/60 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                                ZH pontszámok
+                            </span>
+                            <span class="text-[11px] font-medium text-slate-400">pl. 24,5</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- 1. Zh -->
+                            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/80 p-2.5 transition focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                                <label for="input-zh1-${subj.id}" class="block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">1. Zh</label>
+                                <input
+                                    type="text"
+                                    inputmode="decimal"
+                                    id="input-zh1-${subj.id}"
+                                    value="${escapeAttr(subj.zh1)}"
+                                    placeholder="0"
+                                    oninput="handleFieldInput('${subj.id}', 'zh1', this.value)"
+                                    class="w-full bg-transparent text-base sm:text-lg font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                >
+                            </div>
+
+                            <!-- 2. Zh -->
+                            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/80 p-2.5 transition focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                                <label for="input-zh2-${subj.id}" class="block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">2. Zh</label>
+                                <input
+                                    type="text"
+                                    inputmode="decimal"
+                                    id="input-zh2-${subj.id}"
+                                    value="${escapeAttr(subj.zh2)}"
+                                    placeholder="0"
+                                    oninput="handleFieldInput('${subj.id}', 'zh2', this.value)"
+                                    class="w-full bg-transparent text-base sm:text-lg font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                >
+                            </div>
+
+                            <!-- 3. Zh vagy Visszaállítás gomb -->
+                            ${zh3Html}
+                        </div>
+                    </div>
+
+                    <!-- Plusz pont doboz (4 oszlop asztali nézetben) -->
+                    <div class="sm:col-span-4 bg-indigo-50/70 dark:bg-indigo-950/30 rounded-2xl p-3 border border-indigo-200/70 dark:border-indigo-800/50 flex flex-col justify-between space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                                </svg>
+                                Plusz pont
+                            </span>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-900 rounded-xl border border-indigo-200/80 dark:border-indigo-800/70 p-2.5 transition focus-within:ring-2 focus-within:ring-indigo-500">
+                            <label for="input-plus-${subj.id}" class="block text-[11px] font-bold uppercase tracking-wide text-indigo-600/80 dark:text-indigo-400 mb-1">Szorgalmi / Egyéb</label>
+                            <input
+                                type="text"
+                                inputmode="decimal"
+                                id="input-plus-${subj.id}"
+                                value="${escapeAttr(subj.plusPoints)}"
+                                placeholder="0"
+                                oninput="handleFieldInput('${subj.id}', 'plusPoints', this.value)"
+                                class="w-full bg-transparent text-base sm:text-lg font-extrabold text-indigo-700 dark:text-indigo-300 placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4 kompakt doboz: Szükséges pontok az érdemjegyekhez (2, 3, 4, 5) -->
+                <div id="grades-grid-${subj.id}" class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+                    ${renderGradeBoxesHtml(stats.total)}
+                </div>
+            `;
+
+            return article;
+        }
+
+        // --- 4 ÉRDEMJEGY DOBOZ HTML GENERÁLÁSA ---
+        function renderGradeBoxesHtml(totalPoints) {
+            return GRADE_THRESHOLDS.map(item => {
+                const isAchieved = totalPoints >= item.min;
+                const needed = Math.max(0, roundToTwo(item.min - totalPoints));
+
+                if (isAchieved) {
+                    return `
+                        <div class="rounded-xl border border-emerald-200/90 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-extrabold text-emerald-800 dark:text-emerald-300">${item.shortLabel}</span>
+                                <span class="text-[10px] font-semibold text-emerald-600/80 dark:text-emerald-400/80">${item.min}p</span>
+                            </div>
+                            <div class="mt-1.5 flex items-center gap-1 text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
+                                <span>Megvan ✓</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-2.5 flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-200">${item.shortLabel}</span>
+                            <span class="text-[10px] font-semibold text-slate-400">${item.min}p</span>
+                        </div>
+                        <div class="mt-1.5 text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
+                            +${formatPoints(needed)} <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">pont kell</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- VALÓS IDEJŰ GÉPELÉS KEZELÉSE (FÓKUSZ MEGTARTÁSÁVAL ÉS PRIVÁT MENTÉSSEL) ---
+        function handleFieldInput(subjectId, fieldName, rawValue) {
+            const subj = subjects.find(s => s.id === subjectId);
+            if (!subj) return;
+
+            subj[fieldName] = rawValue;
+            updateCardCalculations(subj);
+            updateSummaryStrip();
+
+            const timerKey = `${subjectId}_${fieldName}`;
+            clearTimeout(fieldSaveTimers[timerKey]);
+            fieldSaveTimers[timerKey] = setTimeout(() => {
+                saveSingleSubjectToCloud(subj);
+            }, 350);
+        }
+
+        function updateCardCalculations(subj) {
+            const stats = computeSubjectStats(subj);
+
+            const totalEl = document.getElementById(`total-display-${subj.id}`);
+            if (totalEl) totalEl.textContent = formatPoints(stats.total);
+
+            const overMaxEl = document.getElementById(`overmax-badge-${subj.id}`);
+            if (overMaxEl) {
+                if (stats.isOverMax) {
+                    overMaxEl.classList.remove('hidden');
+                    overMaxEl.classList.add('inline-flex');
+                } else {
+                    overMaxEl.classList.add('hidden');
+                    overMaxEl.classList.remove('inline-flex');
+                }
+            }
+
+            const badgeEl = document.getElementById(`grade-badge-${subj.id}`);
+            if (badgeEl) {
+                badgeEl.className = `shrink-0 px-3 py-2 rounded-xl border text-right ${getBadgeColorClasses(stats.currentGrade.color)}`;
+                badgeEl.innerHTML = `
+                    <div class="text-[10px] font-bold uppercase tracking-wider opacity-80">Jelenlegi jegy</div>
+                    <div class="text-sm sm:text-base font-extrabold leading-tight">${stats.currentGrade.label}</div>
+                `;
+            }
+
+            const fillEl = document.getElementById(`progress-fill-${subj.id}`);
+            if (fillEl) {
+                const pct = Math.min(100, Math.max(0, (stats.total / MAX_POINTS) * 100));
+                fillEl.style.width = `${pct}%`;
+                fillEl.className = `h-full rounded-full transition-all duration-300 ease-out ${getProgressFillClass(stats.currentGrade.color)}`;
+            }
+
+            const gradesGridEl = document.getElementById(`grades-grid-${subj.id}`);
+            if (gradesGridEl) {
+                gradesGridEl.innerHTML = renderGradeBoxesHtml(stats.total);
+            }
+        }
+
+        // --- 3. ZH TÖRLÉSE ÉS VISSZAÁLLÍTÁSA ---
+        function removeZh3(subjectId) {
+            const subj = subjects.find(s => s.id === subjectId);
+            if (!subj) return;
+
+            subj.hasZh3 = false;
+            subj.zh3 = '';
+            renderAllSubjects();
+            saveSingleSubjectToCloud(subj);
+            showToast('3. Zh eltávolítva');
+        }
+
+        function restoreZh3(subjectId) {
+            const subj = subjects.find(s => s.id === subjectId);
+            if (!subj) return;
+
+            subj.hasZh3 = true;
+            renderAllSubjects();
+            saveSingleSubjectToCloud(subj);
+            const input = document.getElementById(`input-zh3-${subjectId}`);
+            if (input) input.focus();
+        }
+
+        // --- ÚJ TANTÁRGY HOZZÁADÁSA ---
+        function handleAddSubject(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                showToast('Privát fiók betöltése folyamatban...');
+                return;
+            }
+
+            const input = document.getElementById('newSubjectInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const minOrder = subjects.reduce((min, s) => Math.min(min, s.order ?? 0), 0);
+            const newSubject = {
+                id: 'subj-' + Date.now(),
+                name: name,
+                zh1: '',
+                zh2: '',
+                zh3: '',
+                hasZh3: true,
+                plusPoints: '',
+                order: minOrder - 1
+            };
+
+            subjects.unshift(newSubject);
+            input.value = '';
+            renderAllSubjects();
+            saveSingleSubjectToCloud(newSubject);
+            showToast('Tantárgy hozzáadva a privát fiókodhoz');
+
+            const firstZhInput = document.getElementById(`input-zh1-${newSubject.id}`);
+            if (firstZhInput) firstZhInput.focus();
+        }
+
+        // --- TANTÁRGY ÁTNEVEZÉSE ---
+        function openRenameModal(subjectId) {
+            const subj = subjects.find(s => s.id === subjectId);
+            if (!subj) return;
+
+            renamingSubjectId = subjectId;
+            const input = document.getElementById('renameSubjectInput');
+            input.value = subj.name;
+
+            const modal = document.getElementById('renameModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => input.focus(), 50);
+        }
+
+        function closeRenameModal() {
+            renamingSubjectId = null;
+            const modal = document.getElementById('renameModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function handleRenameSubmit(e) {
+            e.preventDefault();
+            if (!renamingSubjectId) return;
+
+            const subj = subjects.find(s => s.id === renamingSubjectId);
+            const newName = document.getElementById('renameSubjectInput').value.trim();
+
+            if (subj && newName) {
+                subj.name = newName;
+                renderAllSubjects();
+                saveSingleSubjectToCloud(subj);
+                showToast('Tantárgy átnevezve');
+            }
+            closeRenameModal();
+        }
+
+        // --- TANTÁRGY TÖRLÉSE ---
+        function requestDeleteSubject(subjectId) {
+            const subj = subjects.find(s => s.id === subjectId);
+            if (!subj) return;
+
+            document.getElementById('confirmModalText').textContent = `Biztosan törölni szeretnéd a(z) „${subj.name}” tantárgyat?`;
+
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            confirmBtn.onclick = () => {
+                subjects = subjects.filter(s => s.id !== subjectId);
+                renderAllSubjects();
+                deleteSingleSubjectFromCloud(subjectId);
+                closeConfirmModal();
+                showToast('Tantárgy törölve');
+            };
+
+            const modal = document.getElementById('confirmModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // --- JSON BIZTONSÁGI MENTÉS (EXPORT / IMPORT) ---
+        function exportBackupJson() {
+            try {
+                const exportData = {
+                    version: 1,
+                    exportedAt: new Date().toISOString(),
+                    theme: currentTheme,
+                    subjects: subjects
+                };
+                const payload = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([payload], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const dateStr = new Date().toISOString().slice(0, 10);
+                link.href = url;
+                link.download = `jegykalkulator-mentes-${dateStr}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showToast('Biztonsági mentés letöltve');
+            } catch (e) {
+                console.error('Export hiba:', e);
+                showToast('Nem sikerült a mentés letöltése');
+            }
+        }
+
+        function importBackupJson(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            if (!currentUser || !db) {
+                showToast('Privát fiók nem elérhető');
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    const incomingSubjects = Array.isArray(parsed)
+                        ? parsed
+                        : (parsed && Array.isArray(parsed.subjects) ? parsed.subjects : null);
+
+                    if (!incomingSubjects) {
+                        showToast('Érvénytelen mentési fájl');
+                        return;
+                    }
+
+                    const userId = currentUser.uid;
+                    const batch = writeBatch(db);
+
+                    // Meglévő tárgyak cseréje a visszatöltött saját tárgyakra
+                    subjects.forEach((existing) => {
+                        const oldRef = doc(db, 'artifacts', appId, 'users', userId, 'subjects', existing.id);
+                        batch.delete(oldRef);
+                    });
+
+                    const sanitizedList = incomingSubjects.map((item, idx) => {
+                        const s = sanitizeSubject(item, item.id || `subj-${Date.now()}-${idx}`);
+                        s.order = idx;
+                        return s;
+                    });
+
+                    sanitizedList.forEach((s) => {
+                        const newRef = doc(db, 'artifacts', appId, 'users', userId, 'subjects', s.id);
+                        batch.set(newRef, {
+                            ...s,
+                            updatedAt: new Date().toISOString()
+                        });
+                    });
+
+                    if (parsed && (parsed.theme === 'dark' || parsed.theme === 'light')) {
+                        applyTheme(parsed.theme);
+                        const prefsRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'preferences');
+                        batch.set(prefsRef, {
+                            initialized: true,
+                            theme: parsed.theme,
+                            updatedAt: new Date().toISOString()
+                        }, { merge: true });
+                    }
+
+                    await batch.commit();
+                    showToast('Saját adatok sikeresen visszatöltve');
+                } catch (err) {
+                    console.error('Import hiba:', err);
+                    showToast('Hibás JSON formátum');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- GLOBÁLIS FÜGGVÉNYEK EXPONÁLÁSA A HTML ESEMÉNYKEZELŐKHÖZ ---
+        window.toggleTheme = toggleTheme;
+        window.handleDraftSubjectInput = handleDraftSubjectInput;
+        window.handleAddSubject = handleAddSubject;
+        window.handleFieldInput = handleFieldInput;
+        window.removeZh3 = removeZh3;
+        window.restoreZh3 = restoreZh3;
+        window.openRenameModal = openRenameModal;
+        window.closeRenameModal = closeRenameModal;
+        window.handleRenameSubmit = handleRenameSubmit;
+        window.requestDeleteSubject = requestDeleteSubject;
+        window.closeConfirmModal = closeConfirmModal;
+        window.exportBackupJson = exportBackupJson;
+        window.importBackupJson = importBackupJson;
+
+        // --- STÍLUS ÉS BIZTONSÁGI SEGÉDFÜGGVÉNYEK ---
+        function getBadgeColorClasses(color) {
+            const map = {
+                rose: 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
+                amber: 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
+                yellow: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/70 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/60',
+                emerald: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
+                indigo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60'
+            };
+            return map[color] || map.rose;
+        }
+
+        function getProgressFillClass(color) {
+            const map = {
+                rose: 'bg-rose-500',
+                amber: 'bg-amber-500',
+                yellow: 'bg-yellow-500',
+                emerald: 'bg-emerald-500',
+                indigo: 'bg-indigo-600'
+            };
+            return map[color] || 'bg-indigo-600';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        let toastTimer;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 1700);
+        }
+    </script>
+</body>
+</html>
